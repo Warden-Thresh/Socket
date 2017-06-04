@@ -15,6 +15,7 @@ public class Server {
         startServer();
     }
     public static void  startServer(){
+        sendToAllClient();
         try {
             //open port8888
             ServerSocket serverSocket = new ServerSocket(8888);
@@ -30,9 +31,12 @@ public class Server {
                 inputConnection.setDataInputStream(dataInputStream);
                 inputConnection.setDataOutputStream(dataOutputStream);
                 inputConnection.setSocket(socket);
-                inputConnection.setRemoteAddress(socket.getRemoteSocketAddress().toString());
+                String[] queryStringSplit = socket.getRemoteSocketAddress().toString().split("/");
+                String[] queryStringSplit2 = queryStringSplit[1].split(":");
+                String remoteAddress= queryStringSplit2[0];
+                inputConnection.setRemoteAddress(remoteAddress);
                 inputConnectionList.add(inputConnection);
-                receiveMsg(dataInputStream,socket.getRemoteSocketAddress().toString());
+                receiveMsg(dataInputStream,remoteAddress);
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -48,8 +52,8 @@ public class Server {
                     try {
                         msg = dataInputStream.readUTF();
                     } catch (IOException e) {
-                        System.out.println("客户端已下线");
-                        e.printStackTrace();
+                        System.out.println(remoteAdress+"已下线");
+                        //e.printStackTrace();
                         return;
                     }
                     System.out.println(remoteAdress+"：\n"+msg);
@@ -66,18 +70,36 @@ public class Server {
             public void run() {
                 for (InputConnection inputConnection:inputConnectionList
                      ) {
-                    System.out.println(remoteAdress);
-                    System.out.println(inputConnection.getRemoteAddress());
                     DataOutputStream dataOutputStream = inputConnection.getDataOutputStream();
                     if (!inputConnection.getRemoteAddress().equals(remoteAdress)){
                         try {
-                            dataOutputStream.writeUTF(msg);
+                            dataOutputStream.writeUTF(remoteAdress+"-"+msg);
                         } catch (IOException e) {
                             // e.printStackTrace();
                         }
                     }
                 }
-
+            }
+        }.start();
+    }
+    public static void sendToAllClient(){
+        //发送
+        new Thread(){
+            @Override
+            public void run() {
+                while (true){
+                    Scanner scanner = new Scanner(System.in);
+                    String str = scanner.next();
+                    for (InputConnection inputConnection:inputConnectionList
+                            ) {
+                        DataOutputStream dataOutputStream = inputConnection.getDataOutputStream();
+                        try {
+                            dataOutputStream.writeUTF("服务器"+"-"+str);
+                        } catch (IOException e) {
+                            // e.printStackTrace();
+                        }
+                    }
+                }
             }
         }.start();
     }
